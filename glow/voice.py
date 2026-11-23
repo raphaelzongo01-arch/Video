@@ -95,12 +95,17 @@ EL_VOICES = {
     "el_matilda": "XrExE9yKIg1WjnnlVkGX",
 }
 EL_SETTINGS = dict(stability=0.45, similarity_boost=0.8, style=0.35, use_speaker_boost=True, speed=1.0)
+# ton « reproche / provocation » : modèle v3 + indications de jeu (non prononcées), remises à chaque scène
+EL_MODEL = "eleven_v3"
+EL_V3_SETTINGS = dict(stability=0.0, similarity_boost=0.8)
+EL_TAG = "[annoyed] [provocative] [serious]"
+EL_TEMPO = 1.17
 
 
 def el_take(text, voice, cache_dir, model="eleven_multilingual_v2", tempo=1.0, settings=None):
     """Retourne (audio 24 kHz traité, liste (car, début, fin) en secondes après accélération)."""
     import hashlib, json, base64, urllib.request
-    settings = settings or EL_SETTINGS
+    settings = settings or (EL_V3_SETTINGS if model == "eleven_v3" else EL_SETTINGS)
     os.makedirs(cache_dir, exist_ok=True)
     key = hashlib.md5(repr((text, voice, model, settings)).encode()).hexdigest()
     fj = os.path.join(cache_dir, f"el_{key}.json")

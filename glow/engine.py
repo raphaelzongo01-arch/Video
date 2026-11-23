@@ -480,83 +480,96 @@ def _tokens(text):
     return out
 
 
-PAUSE_COMMA, PAUSE_POINT, PAUSE_SCENE = 0.08, 0.22, 0.34
+def _compress_silences(audio, chars, punct_target=0.22, other_target=0.1, min_sil=0.2):
+    """Raccourcit les silences réels (détectés sur l'énergie) ; renvoie audio + fonction de décalage."""
+    hop = int(0.01 * SR)
+    n = len(audio) // hop
+    e = np.array([np.sqrt(np.mean(audio[k * hop:(k + 1) * hop] ** 2)) for k in range(n)]) + 1e-9
+    db = 20 * np.log10(e)
+    thr = np.percentile(db, 95) - 38
+    sil = db < thr
+    runs, k = [], 0
+    while k < n:
+        if sil[k]:
+            j = k
+            while j < n and sil[j]:
+                j += 1
+            if (j - k) * 0.01 >= min_sil and k > 0 and j < n:
+                runs.append((k * 0.01, j * 0.01))
+            k = j
+        else:
+            k += 1
+    ends = [(c[2], c[0]) for c in chars]
+    pieces, shift, last, acc = [], [], 0.0, 0.0
+    for (a, b) in runs:
+        # ponctuation la plus proche avant la fin du silence
+        prev = [ch for (t, ch) in ends if t <= b + 0.3 and ch.strip()]
+        tgt = punct_target if prev and prev[-1] in ".?!»" else other_target
+        keep = min(tgt, b - a)
+        cut_a = a + keep / 2
+        cut_b = b - keep / 2
+        pieces.append(audio[int(last * SR):int(cut_a * SR)])
+        acc -= (cut_b - cut_a)
+        shift.append((cut_b, acc))
+        last = cut_b
+    pieces.append(audio[int(last * SR):])
+
+    def sh(x):
+        add = 0.0
+        for (t, a_) in shift:
+            if x >= t:
+                add = a_
+        return max(0.0, x + add)
+    return np.concatenate(pieces), sh
+
+
+def _trim_bounds(audio):
+    idx = np.nonzero(np.abs(audio) > 0.02)[0]
+    if len(idx) == 0:
+        return 0, len(audio)
+    return max(0, idx[0] - int(0.03 * SR)), min(len(audio), idx[-1] + int(0.08 * SR))
+
+
+PAUSE_SCENE = 0.34
 
 
 def build_el(scenes, cache_dir, voice, lead=0.6, tail=2.2):
     import voice as V
-    flat, text, offs = [], "", []
-    for sc in scenes:
+    tag = V.EL_TAG if V.EL_MODEL == "eleven_v3" else ""
+    full, t = [], lead
+    for si, sc in enumerate(scenes):
+        text, offs, items = (tag + " ") if tag else "", [], []
         for ch in sc["say"]:
             cap, say = (ch if isinstance(ch, tuple) else (ch, ch.replace("*", "")))
-            if text:
+            if offs:
                 text += " "
-            offs.append(len(text)); text += say
-            flat.append((sc, cap, say))
-    audio, chars = V.el_take(text, voice, cache_dir)
-    starts = [c[1] for c in chars]; ends = [c[2] for c in chars]
-    # rythme : on remplace chaque silence entre deux phrases par une pause régulière
-    # (virgule / rien -> court, point -> moyen, changement de scène -> un peu plus long)
-    scene_first = set()
-    k = 0
-    for sc in scenes:
-        scene_first.add(k); k += len(sc["say"])
-    bounds = []
-    for i in range(1, len(flat)):
-        prev_say = flat[i - 1][2].rstrip()
-        pe = ends[offs[i - 1] + len(prev_say) - 1]
-        ns = starts[offs[i]]
-        if i in scene_first:
-            g = PAUSE_SCENE + flat[i][0].get("pause", 0)
-        elif prev_say[-1:] in ".?!»":
-            g = PAUSE_POINT
-        else:
-            g = PAUSE_COMMA
-        bounds.append((pe, ns, g))
-    pieces, shift, last, acc = [], [], 0.0, 0.0
-    fade = int(0.012 * SR)
-    for (pe, ns, g) in bounds:
-        a_end = min(ns, pe + 0.04)
-        b_start = max(a_end, ns - 0.03)
-        seg = audio[int(last * SR):int(a_end * SR)].copy()
-        if len(seg) > fade:
-            seg[-fade:] *= np.linspace(1, 0, fade)
-        pieces.append(seg)
-        pieces.append(np.zeros(int(g * SR), np.float32))
-        acc += g - (b_start - a_end)
-        shift.append((b_start, acc))
-        last = b_start
-    pieces.append(audio[int(last * SR):])
-    audio = np.concatenate(pieces)
-
-    def sh(x):
-        add = 0.0
-        for (t, a) in shift:
-            if x >= t - 1e-6:
-                add = a
-        return x + add
-    starts = [sh(x) for x in starts]; ends = [sh(x) for x in ends]
-    for sc in scenes:
+            offs.append(len(text)); text += say; items.append((cap, say))
+        audio, chars = V.el_take(text, voice, cache_dir, model=V.EL_MODEL, tempo=V.EL_TEMPO)
+        audio, sh = _compress_silences(audio, chars)
+        a0, a1 = _trim_bounds(audio)
+        audio = audio[a0:a1]
+        base = t - a0 / SR
+        starts = [sh(c[1]) for c in chars]; ends = [sh(c[2]) for c in chars]
         sc["chunks"] = []
-    for i, (sc, cap, say) in enumerate(flat):
-        o = offs[i]
-        idx = [o + j for j, ch in enumerate(say) if not ch.isspace()]
-        s, e = lead + starts[idx[0]], lead + ends[idx[-1]]
-        words = parse_caption(cap)
-        toks = _tokens(say)
-        if len(toks) == len(words):
-            times = [lead + starts[o + p] for _, p in toks]
-        else:
-            times = word_times(words, s, e - s)
-        sc["chunks"].append(dict(cap=cap, words=words, start=s, end=e, times=times,
-                                 clip=audio if i == 0 else np.zeros(0, np.float32)))
-    scenes[0]["chunks"][0]["start_audio"] = lead
-    # l'audio complet démarre à `lead` : on décale le clip du 1er chunk
-    scenes[0]["chunks"][0]["clip"] = np.concatenate([np.zeros(int(max(0, scenes[0]["chunks"][0]["start"] - lead) * 0)), audio])
-    scenes[0]["chunks"][0]["audio_at"] = lead
+        for k, ((cap, say), o) in enumerate(zip(items, offs)):
+            idx = [o + j for j, c in enumerate(say) if not c.isspace()]
+            s_ = base + starts[idx[0]]
+            e_ = base + ends[idx[-1]]
+            s_ = max(s_, t); e_ = min(max(e_, s_ + 0.2), t + len(audio) / SR)
+            words = parse_caption(cap)
+            toks = _tokens(say)
+            if len(toks) == len(words):
+                times = [max(t, base + starts[o + p]) for _, p in toks]
+            else:
+                times = word_times(words, s_, e_ - s_)
+            chd = dict(cap=cap, words=words, start=s_, end=e_, times=times, clip=np.zeros(0, np.float32))
+            if k == 0:
+                chd["clip"] = audio; chd["audio_at"] = t
+            sc["chunks"].append(chd)
+        t += len(audio) / SR + PAUSE_SCENE + sc.get("pause", 0)
     for si, sc in enumerate(scenes):
-        sc["start"] = (sc["chunks"][0]["start"] - 0.3) if si else 0.0
-    total = lead + len(audio) / SR + tail
+        sc["start"] = (sc["chunks"][0]["audio_at"] - 0.3) if si else 0.0
+    total = t - PAUSE_SCENE + tail
     for si, sc in enumerate(scenes):
         sc["end"] = scenes[si + 1]["start"] if si + 1 < len(scenes) else total
     return scenes, total
