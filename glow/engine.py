@@ -465,7 +465,89 @@ class T:
         return self.p(self.w(k, j) + delay, d, f)
 
 
+def _tokens(text):
+    """Mots (mêmes règles de fusion que parse_caption) avec leur position de départ dans le texte."""
+    import re
+    toks = [(m.group(0).replace("*", ""), m.start()) for m in re.finditer(r"\S+", text)]
+    out = []
+    for w, pos in toks:
+        if out and w.rstrip(".,") in ("?", "!", ":", "%", "€", "»", ";"):
+            continue
+        if out and out[-1][0] == "«":
+            out[-1] = (w, out[-1][1])
+            continue
+        out.append((w, pos))
+    return out
+
+
+def build_el(scenes, cache_dir, voice, lead=0.6, tail=2.2, scene_gap=0.45):
+    import voice as V
+    flat, text, offs = [], "", []
+    for sc in scenes:
+        for ch in sc["say"]:
+            cap, say = (ch if isinstance(ch, tuple) else (ch, ch.replace("*", "")))
+            if text:
+                text += " "
+            offs.append(len(text)); text += say
+            flat.append((sc, cap, say))
+    audio, chars = V.el_take(text, voice, cache_dir)
+    starts = [c[1] for c in chars]; ends = [c[2] for c in chars]
+    # respiration entre les scènes : on coupe la prise au milieu du silence et on insère `scene_gap`
+    first_idx = []
+    k = 0
+    for sc in scenes:
+        first_idx.append(k); k += len(sc["say"])
+    cuts = []
+    for si in range(1, len(scenes)):
+        i = first_idx[si]
+        prev_end = ends[offs[i] - 2] if offs[i] >= 2 else 0
+        nxt = starts[offs[i]]
+        cuts.append(((prev_end + nxt) / 2, scenes[si].get("gap", scene_gap) + scenes[si].get("pause", 0)))
+    pieces, last, shift = [], 0.0, []
+    acc = 0.0
+    for (t, g) in cuts:
+        pieces.append(audio[int(last * SR):int(t * SR)])
+        pieces.append(np.zeros(int(g * SR), np.float32))
+        shift.append((t, acc + g)); acc += g; last = t
+    pieces.append(audio[int(last * SR):])
+    audio = np.concatenate(pieces)
+
+    def sh(x):
+        add = 0.0
+        for (t, a) in shift:
+            if x >= t:
+                add = a
+        return x + add
+    starts = [sh(x) for x in starts]; ends = [sh(x) for x in ends]
+    for sc in scenes:
+        sc["chunks"] = []
+    for i, (sc, cap, say) in enumerate(flat):
+        o = offs[i]
+        idx = [o + j for j, ch in enumerate(say) if not ch.isspace()]
+        s, e = lead + starts[idx[0]], lead + ends[idx[-1]]
+        words = parse_caption(cap)
+        toks = _tokens(say)
+        if len(toks) == len(words):
+            times = [lead + starts[o + p] for _, p in toks]
+        else:
+            times = word_times(words, s, e - s)
+        sc["chunks"].append(dict(cap=cap, words=words, start=s, end=e, times=times,
+                                 clip=audio if i == 0 else np.zeros(0, np.float32)))
+    scenes[0]["chunks"][0]["start_audio"] = lead
+    # l'audio complet démarre à `lead` : on décale le clip du 1er chunk
+    scenes[0]["chunks"][0]["clip"] = np.concatenate([np.zeros(int(max(0, scenes[0]["chunks"][0]["start"] - lead) * 0)), audio])
+    scenes[0]["chunks"][0]["audio_at"] = lead
+    for si, sc in enumerate(scenes):
+        sc["start"] = (sc["chunks"][0]["start"] - 0.3) if si else 0.0
+    total = lead + len(audio) / SR + tail
+    for si, sc in enumerate(scenes):
+        sc["end"] = scenes[si + 1]["start"] if si + 1 < len(scenes) else total
+    return scenes, total
+
+
 def build(scenes, cache_dir, speed=1.0, voice="miro", gap=0.14, scene_gap=0.38, lead=0.6, tail=2.2):
+    if voice.startswith("el_"):
+        return build_el(scenes, cache_dir, voice, lead, tail)
     all_chunks = []
     for sc in scenes:
         for ch in sc["say"]:
@@ -567,8 +649,9 @@ def render_video(video_module_name, out_path, music_fn):
     audio = np.zeros(n + SR)
     for s in scenes:
         for ch in s["chunks"]:
-            a = int(ch["start"] * SR)
-            audio[a:a + len(ch["clip"])] += ch["clip"] * 1.0
+            a = int(ch.get("audio_at", ch["start"]) * SR)
+            seg = ch["clip"][:max(0, len(audio) - a)]
+            audio[a:a + len(seg)] += seg * 1.0
     bgm = music_fn(total, [s["start"] for s in scenes], getattr(mod, "MUSIC", {}))
     audio[:len(bgm)] += bgm
     audio = audio[:n]

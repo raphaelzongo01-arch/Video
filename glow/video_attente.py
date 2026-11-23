@@ -4,9 +4,9 @@ from engine import *
 
 SEED = 11
 SPEED = 1.1
-VOICE = "siwis"
+VOICE = "el_jessica"
 CACHE = os.path.join(ROOT, "out", "tts_attente")
-MUSIC = dict(seed=4, bpm=66, gain=1.0, hit_scenes=[4, 10, 11])
+MUSIC = dict(beat=True, beat_bpm=88, seed=4, bpm=66, gain=1.0, hit_scenes=[4, 10, 11])
 
 GY = 700  # sol de la rangée
 ROW = [W / 2 + (i - 4) * 152 for i in range(9)]

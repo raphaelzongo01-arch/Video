@@ -4,9 +4,9 @@ from engine import *
 
 SEED = 23
 SPEED = 1.1
-VOICE = "siwis"
+VOICE = "el_jessica"
 CACHE = os.path.join(ROOT, "out", "tts_pourcent")
-MUSIC = dict(seed=9, bpm=70, gain=1.0, prog=[[50, 53, 57], [46, 50, 53], [53, 57, 60], [48, 52, 55]],
+MUSIC = dict(beat=True, beat_bpm=88, seed=9, bpm=70, gain=1.0, prog=[[50, 53, 57], [46, 50, 53], [53, 57, 60], [48, 52, 55]],
              hit_scenes=[7, 10, 12])
 
 DIM = (120, 125, 135)

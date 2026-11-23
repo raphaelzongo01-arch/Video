@@ -84,3 +84,44 @@ def say(text, voice="miro", speed_mul=1.0):
     out = _fx(sig, sr, FX[fx])
     out = trim(out)
     return (out / (np.abs(out).max() + 1e-6) * 0.85).astype(np.float32)
+
+
+# ---------------------------------------------------------------- ElevenLabs (une seule prise + minutage)
+EL_VOICES = {
+    "el_jessica": "cgSgspJ2msm6clMCkdW9",
+    "el_sarah": "EXAVITQu4vr4xnSDxMaL",
+    "el_alice": "Xb7hH8MSUJpSbSDYk0k2",
+    "el_laura": "FGY2WhTYpPnrIDTdsKH5",
+    "el_matilda": "XrExE9yKIg1WjnnlVkGX",
+}
+EL_SETTINGS = dict(stability=0.3, similarity_boost=0.8, style=0.6, use_speaker_boost=True, speed=1.15)
+
+
+def el_take(text, voice, cache_dir, model="eleven_multilingual_v2", tempo=1.1, settings=None):
+    """Retourne (audio 24 kHz traité, liste (car, début, fin) en secondes après accélération)."""
+    import hashlib, json, base64, urllib.request
+    settings = settings or EL_SETTINGS
+    os.makedirs(cache_dir, exist_ok=True)
+    key = hashlib.md5(repr((text, voice, model, settings)).encode()).hexdigest()
+    fj = os.path.join(cache_dir, f"el_{key}.json")
+    if not os.path.exists(fj):
+        body = json.dumps(dict(text=text, model_id=model, language_code="fr", voice_settings=settings)).encode()
+        req = urllib.request.Request(
+            f"https://api.elevenlabs.io/v1/text-to-speech/{EL_VOICES[voice]}/with-timestamps?output_format=mp3_44100_128",
+            data=body, headers={"xi-api-key": os.environ.get("ELEVENLABS_API_KEY", "proxy-injected"),
+                                "Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=300) as r:
+            data = json.loads(r.read())
+        json.dump(data, open(fj, "w"))
+    data = json.load(open(fj))
+    with tempfile.TemporaryDirectory() as td:
+        a, b = os.path.join(td, "a.mp3"), os.path.join(td, "b.wav")
+        open(a, "wb").write(base64.b64decode(data["audio_base64"]))
+        chain = FX["female"] + f",atempo={tempo},aresample={SR}"
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", a, "-af", chain, "-ac", "1", b], check=True)
+        out, _ = sf.read(b, dtype="float32")
+    al = data["alignment"]
+    chars = list(zip(al["characters"], [x / tempo for x in al["character_start_times_seconds"]],
+                     [x / tempo for x in al["character_end_times_seconds"]]))
+    out = out / (np.abs(out).max() + 1e-6) * 0.85
+    return out.astype(np.float32), chars

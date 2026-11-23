@@ -83,6 +83,22 @@ def ambient(total, scene_starts, opts):
         boom = np.sin(2 * np.pi * (42 + 30 * np.exp(-tt * 6)) * tt) * np.exp(-tt * 2.2)
         e = min(n, a + m); out[a:e] += 0.22 * boom[:e - a]
     out = _reverb(out, 3.2, 0.4)
+    if opts.get("beat"):
+        # pulsation : grosse caisse douce sur 1 et 3, charleston léger sur les contretemps
+        bb = 60 / opts.get("beat_bpm", 88)
+        m = int(0.25 * SR); tt = np.arange(m) / SR
+        kick = np.sin(2 * np.pi * (48 + 90 * np.exp(-tt * 28)) * tt) * np.exp(-tt * 9)
+        mh = int(0.06 * SR)
+        k = 0
+        t0 = opts.get("beat_start", 1.0)
+        while t0 + k * bb / 2 < total:
+            p = int((t0 + k * bb / 2) * SR)
+            if k % 4 == 0 and p + m < n:
+                out[p:p + m] += 0.16 * kick
+            elif k % 2 == 1 and p + mh < n:
+                h = rng.normal(0, 1, mh); h = h - np.convolve(h, np.ones(6) / 6, "same")
+                out[p:p + mh] += 0.035 * h * np.exp(-np.arange(mh) / SR * 70)
+            k += 1
     # fondu de fin
     end = int(total * SR)
     fo = int(2.0 * SR)
