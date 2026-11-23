@@ -480,7 +480,10 @@ def _tokens(text):
     return out
 
 
-def build_el(scenes, cache_dir, voice, lead=0.6, tail=2.2, scene_gap=0.45):
+PAUSE_COMMA, PAUSE_POINT, PAUSE_SCENE = 0.08, 0.22, 0.34
+
+
+def build_el(scenes, cache_dir, voice, lead=0.6, tail=2.2):
     import voice as V
     flat, text, offs = [], "", []
     for sc in scenes:
@@ -492,30 +495,44 @@ def build_el(scenes, cache_dir, voice, lead=0.6, tail=2.2, scene_gap=0.45):
             flat.append((sc, cap, say))
     audio, chars = V.el_take(text, voice, cache_dir)
     starts = [c[1] for c in chars]; ends = [c[2] for c in chars]
-    # respiration entre les scènes : on coupe la prise au milieu du silence et on insère `scene_gap`
-    first_idx = []
+    # rythme : on remplace chaque silence entre deux phrases par une pause régulière
+    # (virgule / rien -> court, point -> moyen, changement de scène -> un peu plus long)
+    scene_first = set()
     k = 0
     for sc in scenes:
-        first_idx.append(k); k += len(sc["say"])
-    cuts = []
-    for si in range(1, len(scenes)):
-        i = first_idx[si]
-        prev_end = ends[offs[i] - 2] if offs[i] >= 2 else 0
-        nxt = starts[offs[i]]
-        cuts.append(((prev_end + nxt) / 2, scenes[si].get("gap", scene_gap) + scenes[si].get("pause", 0)))
-    pieces, last, shift = [], 0.0, []
-    acc = 0.0
-    for (t, g) in cuts:
-        pieces.append(audio[int(last * SR):int(t * SR)])
+        scene_first.add(k); k += len(sc["say"])
+    bounds = []
+    for i in range(1, len(flat)):
+        prev_say = flat[i - 1][2].rstrip()
+        pe = ends[offs[i - 1] + len(prev_say) - 1]
+        ns = starts[offs[i]]
+        if i in scene_first:
+            g = PAUSE_SCENE + flat[i][0].get("pause", 0)
+        elif prev_say[-1:] in ".?!»":
+            g = PAUSE_POINT
+        else:
+            g = PAUSE_COMMA
+        bounds.append((pe, ns, g))
+    pieces, shift, last, acc = [], [], 0.0, 0.0
+    fade = int(0.012 * SR)
+    for (pe, ns, g) in bounds:
+        a_end = min(ns, pe + 0.04)
+        b_start = max(a_end, ns - 0.03)
+        seg = audio[int(last * SR):int(a_end * SR)].copy()
+        if len(seg) > fade:
+            seg[-fade:] *= np.linspace(1, 0, fade)
+        pieces.append(seg)
         pieces.append(np.zeros(int(g * SR), np.float32))
-        shift.append((t, acc + g)); acc += g; last = t
+        acc += g - (b_start - a_end)
+        shift.append((b_start, acc))
+        last = b_start
     pieces.append(audio[int(last * SR):])
     audio = np.concatenate(pieces)
 
     def sh(x):
         add = 0.0
         for (t, a) in shift:
-            if x >= t:
+            if x >= t - 1e-6:
                 add = a
         return x + add
     starts = [sh(x) for x in starts]; ends = [sh(x) for x in ends]

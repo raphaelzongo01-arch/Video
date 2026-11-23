@@ -94,10 +94,10 @@ EL_VOICES = {
     "el_laura": "FGY2WhTYpPnrIDTdsKH5",
     "el_matilda": "XrExE9yKIg1WjnnlVkGX",
 }
-EL_SETTINGS = dict(stability=0.3, similarity_boost=0.8, style=0.6, use_speaker_boost=True, speed=1.15)
+EL_SETTINGS = dict(stability=0.45, similarity_boost=0.8, style=0.35, use_speaker_boost=True, speed=1.0)
 
 
-def el_take(text, voice, cache_dir, model="eleven_multilingual_v2", tempo=1.1, settings=None):
+def el_take(text, voice, cache_dir, model="eleven_multilingual_v2", tempo=1.0, settings=None):
     """Retourne (audio 24 kHz traité, liste (car, début, fin) en secondes après accélération)."""
     import hashlib, json, base64, urllib.request
     settings = settings or EL_SETTINGS
@@ -117,7 +117,7 @@ def el_take(text, voice, cache_dir, model="eleven_multilingual_v2", tempo=1.1, s
     with tempfile.TemporaryDirectory() as td:
         a, b = os.path.join(td, "a.mp3"), os.path.join(td, "b.wav")
         open(a, "wb").write(base64.b64decode(data["audio_base64"]))
-        chain = FX["female"] + f",atempo={tempo},aresample={SR}"
+        chain = FX["female"] + (f",atempo={tempo}" if tempo != 1.0 else "") + f",aresample={SR}"
         subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", a, "-af", chain, "-ac", "1", b], check=True)
         out, _ = sf.read(b, dtype="float32")
     al = data["alignment"]
