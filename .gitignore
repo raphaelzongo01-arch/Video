@@ -5,3 +5,4 @@ __pycache__/
 assets/voices/
 # Local secrets written by `elevenlabs onboard`
 /.env.local
+*.wav
