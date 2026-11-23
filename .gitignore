@@ -3,3 +3,5 @@ assets/*.onnx
 assets/*.bin
 __pycache__/
 assets/voices/
+# Local secrets written by `elevenlabs onboard`
+/.env.local
