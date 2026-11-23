@@ -1,6 +1,6 @@
 # Vidéos « glow » (style fond noir + personnages lumineux)
 
-Format 1920×1080, 30 i/s, voix off française d'homme (Piper « miro », via `voice.py`), musique d'ambiance générée.
+Format 1920×1080, 30 i/s, voix off française d'homme (Kokoro « siwis », voix de femme, via `voice.py`), musique d'ambiance générée.
 
 Voix : modèles Piper récupérés sur github.com/k2-fsa/sherpa-onnx (releases `tts-models`, ex. `vits-piper-fr_FR-miro-high`),
 à placer dans `assets/voices/<nom>/<nom>.onnx` + `.onnx.json`. Changer `VOICE` (miro, tom, jessica, siwis) et `SPEED`

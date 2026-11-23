@@ -3,8 +3,8 @@ import math, os
 from engine import *
 
 SEED = 11
-SPEED = 1.4
-VOICE = "miro"
+SPEED = 1.1
+VOICE = "siwis"
 CACHE = os.path.join(ROOT, "out", "tts_attente")
 MUSIC = dict(seed=4, bpm=66, gain=1.0, hit_scenes=[4, 10, 11])
 
