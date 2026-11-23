@@ -1,0 +1,4 @@
+out/
+assets/*.onnx
+assets/*.bin
+__pycache__/
