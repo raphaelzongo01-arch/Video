@@ -539,12 +539,34 @@ def build_el(scenes, cache_dir, voice, lead=0.6, tail=2.2):
     full, t = [], lead
     for si, sc in enumerate(scenes):
         text, offs, items = (tag + " ") if tag else "", [], []
+        keyspans = []
         for ch in sc["say"]:
             cap, say = (ch if isinstance(ch, tuple) else (ch, ch.replace("*", "")))
             if offs:
                 text += " "
-            offs.append(len(text)); text += say; items.append((cap, say))
+            offs.append(len(text))
+            if isinstance(ch, str):
+                # mots-clés (*mot*) en MAJUSCULES pour qu'ElevenLabs appuie dessus
+                import re as _re
+                for m in _re.finditer(r"\*([^*]+)\*", ch):
+                    pre = len(ch[:m.start()].replace("*", ""))
+                    keyspans.append((len(text) + pre, len(text) + pre + len(m.group(1))))
+                say_tts = _re.sub(r"\*([^*]+)\*", lambda m: m.group(1).upper(), ch)
+            else:
+                say_tts = say
+            text += say_tts; items.append((cap, say))
         audio, chars = V.el_take(text, voice, cache_dir, model=V.EL_MODEL, tempo=V.EL_TEMPO)
+        # renfort de volume (+3 dB) sur les mots-clés
+        env = np.ones(len(audio), np.float32)
+        r = int(0.03 * SR)
+        for (ka, kb) in keyspans:
+            a_, b_ = int(chars[ka][1] * SR), int(chars[kb - 1][2] * SR)
+            if b_ > a_:
+                env[a_:b_] = np.maximum(env[a_:b_], 1.41)
+                env[max(0, a_ - r):a_] = np.maximum(env[max(0, a_ - r):a_], np.linspace(1, 1.41, len(env[max(0, a_ - r):a_])))
+                env[b_:b_ + r] = np.maximum(env[b_:b_ + r], np.linspace(1.41, 1, len(env[b_:b_ + r])))
+        audio = audio * env
+        audio = audio / max(1.0, np.abs(audio).max() / 0.95)
         audio, sh = _compress_silences(audio, chars)
         a0, a1 = _trim_bounds(audio)
         audio = audio[a0:a1]

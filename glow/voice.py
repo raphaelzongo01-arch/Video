@@ -97,9 +97,9 @@ EL_VOICES = {
 EL_SETTINGS = dict(stability=0.45, similarity_boost=0.8, style=0.35, use_speaker_boost=True, speed=1.0)
 # ton « reproche / provocation » : modèle v3 + indications de jeu (non prononcées), remises à chaque scène
 EL_MODEL = "eleven_v3"
-EL_V3_SETTINGS = dict(stability=0.0, similarity_boost=0.8)
-EL_TAG = "[annoyed] [provocative] [serious]"
-EL_TEMPO = 1.17
+EL_V3_SETTINGS = dict(stability=0.5, similarity_boost=0.8)
+EL_TAG = "[firm] [emphatic] [articulating clearly]"
+EL_TEMPO = 1.15
 
 
 def el_take(text, voice, cache_dir, model="eleven_multilingual_v2", tempo=1.0, settings=None):
