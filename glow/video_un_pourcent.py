@@ -3,7 +3,8 @@ import math, os
 from engine import *
 
 SEED = 23
-SPEED = 1.02
+SPEED = 1.4
+VOICE = "miro"
 CACHE = os.path.join(ROOT, "out", "tts_pourcent")
 MUSIC = dict(seed=9, bpm=70, gain=1.0, prog=[[50, 53, 57], [46, 50, 53], [53, 57, 60], [48, 52, 55]],
              hit_scenes=[7, 10, 12])
@@ -68,7 +69,7 @@ def s2(c, T):
     figure(c, 830, 780, 1.4, 1)
     figure(c, 1090, 780, 1.4, 1)
     draw_text(c, "=", 960, 735, 60, TF_SEMI, a=T.pc(0, 0.5) * 0.7)
-    items = [("25 ANS", 640), ("MÊME BOULOT", 960), ("1 800 €", 1280)]
+    items = [("25 ANS", 640), ("MÊME TAF", 960), ("1 800 €", 1280)]
     for i, (lab, x) in enumerate(items):
         k = T.pc(i, 0.5, f=eback)
         if k > 0:
@@ -164,7 +165,7 @@ def s5(c, T):
 def s6(c, T):
     a = T.pc(0, 0.6)
     axes(c, a, maxd="30")
-    prog = T.pc(0, 4.2, f=ease, delay=0.3)
+    prog = T.pc(0, T.dur - 0.6, f=ease, delay=0.3)
     curves(c, 30, 150, prog, a)
 
 
@@ -309,21 +310,21 @@ def s14(c, T):
 
 
 SCENES = [
-    dict(say=["Deux personnes", "partent exactement", "du même *endroit*."], draw=s1),
-    dict(say=["Même âge.", "Même boulot.", "Même *salaire*."], draw=s2),
-    dict(say=["La première", "ne change *rien*."], draw=s3),
-    dict(say=["La deuxième", ("s'améliore de 1 %.", "s'améliore d'un pour cent."), "*Chaque* jour."], draw=s4),
-    dict(say=[("1 %,", "Un pour cent,"), "c'est rien.", "Dix pages d'un livre.", "Vingt minutes de sport.",
+    dict(say=["Imagine deux potes.", "Ils partent exactement", "du même *endroit*."], draw=s1),
+    dict(say=["Même âge.", "Même taf.", "Même *salaire*."], draw=s2),
+    dict(say=["Le premier", "change *rien*."], draw=s3),
+    dict(say=["Le deuxième", ("progresse de 1 %.", "progresse de un pour cent."), "*Chaque* jour."], draw=s4),
+    dict(say=[("1 %,", "Un pour cent,"), "c'est rien, hein ?", "Dix pages de lecture.", "Vingt minutes de sport.",
               ("Un euro mis de *côté*.", "Un euro mis de côté.")], draw=s5),
-    dict(say=["Au début,", "personne ne voit la *différence*."], draw=s6, zoom=1.15),
-    dict(say=["Après un mois,", "elle est à peine *devant*."], draw=s7, zoom=1.15),
-    dict(say=["Et c'est là", "que presque tout le monde", "*abandonne*."], draw=s8, zoom=1.15),
-    dict(say=["Parce que le cerveau", "veut des résultats", "*tout de suite*."], draw=s9, zoom=1.15),
-    dict(say=["Mais les maths,", "elles,", "ne mentent *pas*."], draw=s10),
+    dict(say=["Au début,", "tu vois *aucune* différence."], draw=s6, zoom=1.15),
+    dict(say=["Au bout d'un mois,", "il est à peine *devant*."], draw=s7, zoom=1.15),
+    dict(say=["Et c'est là", "que quasiment tout le monde", "*lâche*."], draw=s8, zoom=1.15),
+    dict(say=["Parce que ton cerveau", "veut des résultats", "*tout de suite*."], draw=s9, zoom=1.15),
+    dict(say=["Mais les maths,", "elles,", "mentent *pas*."], draw=s10),
     dict(say=[("1 % par jour,", "Un pour cent par jour,"), "pendant un an,", "ça fait",
               ("37 fois *mieux*.", "trente-sept fois mieux.")], draw=s11, zoom=1.15, pause=0.6),
-    dict(say=["Et la première ?", "Elle est restée", "au même *endroit*."], draw=s12, zoom=1.15),
-    dict(say=["Tu n'as pas besoin", "d'un grand changement.", ("Juste 1 %.", "Juste un pour cent."),
+    dict(say=["Et le premier ?", "Il est resté", "au même *endroit*."], draw=s12, zoom=1.15),
+    dict(say=["T'as pas besoin", "d'un énorme changement.", ("Juste 1 %.", "Juste un pour cent."),
               "*Aujourd'hui*."], draw=s13),
-    dict(say=["Envoie ça à quelqu'un", "qui doit l'*entendre*."], draw=s14),
+    dict(say=["Envoie ça au pote", "qui doit l'*entendre*."], draw=s14),
 ]

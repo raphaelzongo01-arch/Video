@@ -415,21 +415,15 @@ def draw_caption(c, words, times, t, fade_out=1.0, y0=118):
 
 
 # ------------------------------------------------------------------ voix
-def tts(chunks, cache_dir, speed=1.0, voice="ff_siwis"):
+def tts(chunks, cache_dir, speed=1.0, voice="miro"):
+    import hashlib, voice as V
     os.makedirs(cache_dir, exist_ok=True)
-    k = None
     out = []
-    for i, (cap, say) in enumerate(chunks):
-        fn = os.path.join(cache_dir, f"{abs(hash((say, speed, voice))) % 10**12}.wav")
+    for cap, say in chunks:
+        key = hashlib.md5(repr((say, speed, voice, V.VOICES[voice], V.FX[V.VOICES[voice][5]])).encode()).hexdigest()
+        fn = os.path.join(cache_dir, key + ".wav")
         if not os.path.exists(fn):
-            if k is None:
-                from kokoro_onnx import Kokoro
-                k = Kokoro(os.path.join(ASSETS, "kokoro-v1.0.onnx"), os.path.join(ASSETS, "voices-v1.0.bin"))
-            s, sr = k.create(say, voice=voice, speed=speed, lang="fr-fr")
-            s = np.asarray(s, np.float32)
-            idx = np.nonzero(np.abs(s) > 0.015)[0]
-            s = s[max(0, idx[0] - int(0.02 * sr)): idx[-1] + int(0.06 * sr)]
-            sf.write(fn, s, sr)
+            sf.write(fn, V.say(say, voice, speed), SR)
         s, _ = sf.read(fn, dtype="float32")
         out.append(s)
     return out
@@ -471,13 +465,13 @@ class T:
         return self.p(self.w(k, j) + delay, d, f)
 
 
-def build(scenes, cache_dir, speed=1.0, gap=0.22, scene_gap=0.55, lead=0.6, tail=2.2):
+def build(scenes, cache_dir, speed=1.0, voice="miro", gap=0.14, scene_gap=0.38, lead=0.6, tail=2.2):
     all_chunks = []
     for sc in scenes:
         for ch in sc["say"]:
             cap, say = (ch if isinstance(ch, tuple) else (ch, ch.replace("*", "")))
             all_chunks.append((cap, say))
-    clips = tts(all_chunks, cache_dir, speed)
+    clips = tts(all_chunks, cache_dir, speed, voice)
     t = lead
     ci = 0
     for si, sc in enumerate(scenes):
@@ -505,7 +499,7 @@ _G = {}
 def _init(video_module_name):
     import importlib
     mod = importlib.import_module(video_module_name)
-    scenes, total = build(mod.SCENES, mod.CACHE, mod.SPEED)
+    scenes, total = build(mod.SCENES, mod.CACHE, mod.SPEED, getattr(mod, "VOICE", "miro"))
     _G.update(scenes=scenes, total=total, bg=Background(mod.SEED),
               surface=skia.Surface(W, H))
 
@@ -566,7 +560,7 @@ def render_frame(fi):
 def render_video(video_module_name, out_path, music_fn):
     import importlib
     mod = importlib.import_module(video_module_name)
-    scenes, total = build(mod.SCENES, mod.CACHE, mod.SPEED)
+    scenes, total = build(mod.SCENES, mod.CACHE, mod.SPEED, getattr(mod, "VOICE", "miro"))
     print(f"durée : {total:.1f}s")
     # audio
     n = int(total * SR)

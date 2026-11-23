@@ -2,3 +2,4 @@ out/
 assets/*.onnx
 assets/*.bin
 __pycache__/
+assets/voices/

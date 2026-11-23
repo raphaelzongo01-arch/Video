@@ -3,7 +3,8 @@ import math, os
 from engine import *
 
 SEED = 11
-SPEED = 1.02
+SPEED = 1.4
+VOICE = "miro"
 CACHE = os.path.join(ROOT, "out", "tts_attente")
 MUSIC = dict(seed=4, bpm=66, gain=1.0, hit_scenes=[4, 10, 11])
 
@@ -125,7 +126,7 @@ PATH7 = [(260, 760), (420, 740), (520, 780), (640, 700), (760, 760), (900, 650),
 
 
 def s7(c, T):
-    k = 0.12 + 0.88 * T.pc(0, 3.2, f=ease)
+    k = 0.12 + 0.88 * T.pc(0, T.dur - 0.3, f=ease)
     p = make_path(PATH7, True)
     fx, fy = point_on(p, k * 0.45)
     camera(c, 1.35, fx + 120, fy - 60)
@@ -140,9 +141,9 @@ def s7(c, T):
 
 # 8 — les heures, les échecs, les recommencements
 def s8(c, T):
-    cam = T.pc(0, 6, f=ease)
+    cam = T.pc(0, T.dur - 0.2, f=ease)
     p = make_path(PATH7, True)
-    k = 0.45 + 0.35 * T.pc(0, 5.5, f=ease)
+    k = 0.45 + 0.35 * T.pc(0, T.dur - 0.4, f=ease)
     fx, fy = point_on(p, k)
     z = lerp(1.35, 0.95, cam)
     camera(c, z, lerp(fx + 120, W / 2 + 150, cam), lerp(fy - 60, 640, cam))
@@ -166,14 +167,14 @@ HILL = [(-200, 900), (300, 880), (700, 820), (1050, 640), (1300, 470), (1500, 37
 
 
 def s9(c, T):
-    z = lerp(1.25, 0.95, T.p(0, 5, ease))
-    camera(c, z, lerp(700, 1050, T.p(0, 5, ease)), 600)
+    z = lerp(1.25, 0.95, T.p(0, T.dur, ease))
+    camera(c, z, lerp(700, 1050, T.p(0, T.dur, ease)), 600)
     # colline pleine
     hill = make_path(HILL, True)
     fillp = skia.Path(hill); fillp.lineTo(2900, 1600); fillp.lineTo(-200, 1600); fillp.close()
     c.drawPath(fillp, paint((6, 7, 11), 1))
     line(c, HILL, 0.25, 2, 0.4, smooth=True)
-    k = T.pc(0, 5.0, f=ease)
+    k = T.pc(0, T.dur - 0.3, f=ease)
     line(c, HILL[:7], 0.95, 3.5, 1.2, progress=max(0.001, 0.25 + 0.6 * k), smooth=True)
     hp = make_path(HILL[:7], True)
     x, y = point_on(hp, 0.25 + 0.6 * k)
@@ -264,18 +265,19 @@ def s14(c, T):
 
 
 SCENES = [
-    dict(say=["Tout le monde attend", "le *bon* moment."], draw=s1),
-    dict(say=["Le bon moment pour lancer son *projet*,", "pour changer de vie,", "pour enfin *commencer*."], draw=s2),
-    dict(say=["Alors ils attendent.", "Lundi.", "Le mois prochain.", "L'année *prochaine*."], draw=s3),
-    dict(say=["Et pendant qu'ils attendent,", "le temps, lui,", "n'attend *personne*."], draw=s4),
-    dict(say=["Un jour,", "l'un d'eux décide d'avancer.", "Sans être *prêt*."], draw=s5),
-    dict(say=["Les autres le regardent.", "Ils *jugent*.", "« Il n'y arrivera jamais. »"], draw=s6),
-    dict(say=["Ses premiers pas sont *maladroits*."], draw=s7, zoom=1.0),
-    dict(say=["Personne ne voit les heures,", "les *échecs*,", "les recommencements."], draw=s8, zoom=1.0),
-    dict(say=["Mais chaque jour,", "il est un peu plus *loin*."], draw=s9),
+    dict(say=["Tout le monde attend le bon moment.", "Et toi aussi, *franchement*."], draw=s1),
+    dict(say=["Le bon moment pour lancer ton *business*,", "pour te remettre au sport,", "pour enfin *te lancer*."],
+         draw=s2),
+    dict(say=["Alors tu repousses.", "Lundi.", "Le mois prochain.", "L'année *prochaine*."], draw=s3),
+    dict(say=["Mais écoute-moi bien.", "Le temps, lui,", "il t'attend *pas*."], draw=s4),
+    dict(say=["Un jour,", "y en a un qui décide d'y aller.", "Sans être *prêt*."], draw=s5),
+    dict(say=["Et là, tout le monde le regarde.", "Ils le *jugent*.", "« Pour qui il se prend ? »"], draw=s6),
+    dict(say=["Ses premiers pas sont *nuls*.", "Et c'est normal."], draw=s7, zoom=1.0),
+    dict(say=["Personne voit les heures,", "les *échecs*,", "les fois où il recommence."], draw=s8, zoom=1.0),
+    dict(say=["Mais chaque jour,", "il avance. Un peu plus *loin*."], draw=s9),
     dict(say=["Un an plus tard,", "ceux qui attendaient", "attendent *toujours*."], draw=s10),
-    dict(say=["Lui,", "il est *ailleurs*."], draw=s11, pause=0.3),
-    dict(say=["Le bon moment n'arrive jamais.", "Il se *crée*."], draw=s12),
-    dict(say=["Alors arrête d'attendre.", "Commence *aujourd'hui*,", "même petit."], draw=s13, zoom=1.05),
-    dict(say=["Envoie ça à quelqu'un", "qui attend *encore*."], draw=s14),
+    dict(say=["Lui ?", "Il est *ailleurs*."], draw=s11, pause=0.3),
+    dict(say=["Le bon moment n'arrive jamais, mon pote.", "Tu le *crées*."], draw=s12),
+    dict(say=["Alors arrête d'attendre.", "Commence *aujourd'hui*.", "Même petit. Même mal."], draw=s13, zoom=1.05),
+    dict(say=["Envoie ça au pote", "qui attend *encore*."], draw=s14),
 ]

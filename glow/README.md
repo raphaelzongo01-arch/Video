@@ -1,6 +1,10 @@
 # Vidéos « glow » (style fond noir + personnages lumineux)
 
-Format 1920×1080, 30 i/s, voix off française (Kokoro, voix `ff_siwis`), musique d'ambiance générée.
+Format 1920×1080, 30 i/s, voix off française d'homme (Piper « miro », via `voice.py`), musique d'ambiance générée.
+
+Voix : modèles Piper récupérés sur github.com/k2-fsa/sherpa-onnx (releases `tts-models`, ex. `vits-piper-fr_FR-miro-high`),
+à placer dans `assets/voices/<nom>/<nom>.onnx` + `.onnx.json`. Changer `VOICE` (miro, tom, jessica, siwis) et `SPEED`
+en haut de chaque fichier vidéo pour changer de voix ou de débit.
 
 - `video_attente.py` : « Le bon moment n'existe pas »
 - `video_un_pourcent.py` : « 1 % par jour »
@@ -8,7 +12,7 @@ Format 1920×1080, 30 i/s, voix off française (Kokoro, voix `ff_siwis`), musiqu
 ## Générer
 
 ```bash
-pip install skia-python kokoro-onnx soundfile numpy pillow
+pip install skia-python piper-tts kokoro-onnx soundfile numpy pillow
 # modèles dans assets/ : kokoro-v1.0.onnx + voices-v1.0.bin
 # (github.com/thewh1teagle/kokoro-onnx/releases/tag/model-files-v1.0)
 cd glow
