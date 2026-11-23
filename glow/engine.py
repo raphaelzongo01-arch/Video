@@ -89,7 +89,24 @@ def F(tf, size):
     return _fonts[k]
 
 
+LANG = "fr"
+TR = {}  # traductions des étiquettes à l'écran (remplies par les vidéos dans d'autres langues)
+
+
+def tr(t):
+    if LANG == "fr" or not isinstance(t, str):
+        return t
+    import re
+    if t in TR:
+        return TR[t]
+    m = re.fullmatch(r"JOUR (\d+)", t)
+    if m:
+        return f"DAY {m.group(1)}"
+    return re.sub(r"(\d),(\d)", r"\1.\2", t)
+
+
 def text_w(t, tf, size, spacing=0):
+    t = tr(t)
     f = F(tf, size)
     return f.measureText(t) + spacing * max(0, len(t) - 1)
 
@@ -98,6 +115,7 @@ def draw_text(c, t, x, y, size, tf=None, a=1.0, rgb=WHITE, align="center", spaci
     tf = tf or TF_BOLD
     if a <= 0.01:
         return
+    t = tr(t)
     f = F(tf, size)
     w = text_w(t, tf, size, spacing)
     x0 = x - w / 2 if align == "center" else (x - w if align == "right" else x)
@@ -555,7 +573,7 @@ def build_el(scenes, cache_dir, voice, lead=0.6, tail=2.2):
             else:
                 say_tts = say
             text += say_tts; items.append((cap, say))
-        audio, chars = V.el_take(text, voice, cache_dir, model=V.EL_MODEL, tempo=V.EL_TEMPO)
+        audio, chars = V.el_take(text, voice, cache_dir, model=V.EL_MODEL, tempo=V.EL_TEMPO, lang=LANG)
         # renfort de volume (+3 dB) sur les mots-clés
         env = np.ones(len(audio), np.float32)
         r = int(0.03 * SR)
@@ -704,8 +722,9 @@ def render_video(video_module_name, out_path, music_fn):
             a = int(ch.get("audio_at", ch["start"]) * SR)
             seg = ch["clip"][:max(0, len(audio) - a)]
             audio[a:a + len(seg)] += seg * 1.0
-    bgm = music_fn(total, [s["start"] for s in scenes], getattr(mod, "MUSIC", {}))
-    audio[:len(bgm)] += bgm
+    if music_fn is not None:
+        bgm = music_fn(total, [s["start"] for s in scenes], getattr(mod, "MUSIC", {}))
+        audio[:len(bgm)] += bgm
     audio = audio[:n]
     audio /= max(1.0, np.abs(audio).max() / 0.92)
     wav = out_path.replace(".mp4", ".wav")

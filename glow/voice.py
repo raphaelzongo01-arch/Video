@@ -103,7 +103,7 @@ EL_CAPS = False
 EL_TEMPO = 1.15
 
 
-def el_take(text, voice, cache_dir, model="eleven_multilingual_v2", tempo=1.0, settings=None):
+def el_take(text, voice, cache_dir, model="eleven_multilingual_v2", tempo=1.0, settings=None, lang="fr"):
     """Retourne (audio 24 kHz traité, liste (car, début, fin) en secondes après accélération)."""
     import hashlib, json, base64, urllib.request
     settings = settings or (EL_V3_SETTINGS if model == "eleven_v3" else EL_SETTINGS)
@@ -111,7 +111,7 @@ def el_take(text, voice, cache_dir, model="eleven_multilingual_v2", tempo=1.0, s
     key = hashlib.md5(repr((text, voice, model, settings)).encode()).hexdigest()
     fj = os.path.join(cache_dir, f"el_{key}.json")
     if not os.path.exists(fj):
-        body = json.dumps(dict(text=text, model_id=model, language_code="fr", voice_settings=settings)).encode()
+        body = json.dumps(dict(text=text, model_id=model, language_code=lang, voice_settings=settings)).encode()
         req = urllib.request.Request(
             f"https://api.elevenlabs.io/v1/text-to-speech/{EL_VOICES[voice]}/with-timestamps?output_format=mp3_44100_128",
             data=body, headers={"xi-api-key": os.environ.get("ELEVENLABS_API_KEY", "proxy-injected"),
