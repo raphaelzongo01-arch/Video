@@ -93,6 +93,7 @@ EL_VOICES = {
     "el_alice": "Xb7hH8MSUJpSbSDYk0k2",
     "el_laura": "FGY2WhTYpPnrIDTdsKH5",
     "el_matilda": "XrExE9yKIg1WjnnlVkGX",
+    "el_liam": "TX3LPaxmHKxFdv7VOQHJ",
 }
 EL_SETTINGS = dict(stability=0.45, similarity_boost=0.8, style=0.35, use_speaker_boost=True, speed=1.0)
 # ton « reproche / provocation » : modèle v3 + indications de jeu (non prononcées), remises à chaque scène
