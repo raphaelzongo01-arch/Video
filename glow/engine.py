@@ -551,7 +551,7 @@ def build_el(scenes, cache_dir, voice, lead=0.6, tail=2.2):
                 for m in _re.finditer(r"\*([^*]+)\*", ch):
                     pre = len(ch[:m.start()].replace("*", ""))
                     keyspans.append((len(text) + pre, len(text) + pre + len(m.group(1))))
-                say_tts = _re.sub(r"\*([^*]+)\*", lambda m: m.group(1).upper(), ch)
+                say_tts = _re.sub(r"\*([^*]+)\*", (lambda m: m.group(1).upper()) if getattr(V, "EL_CAPS", True) else (lambda m: m.group(1)), ch)
             else:
                 say_tts = say
             text += say_tts; items.append((cap, say))
@@ -562,9 +562,9 @@ def build_el(scenes, cache_dir, voice, lead=0.6, tail=2.2):
         for (ka, kb) in keyspans:
             a_, b_ = int(chars[ka][1] * SR), int(chars[kb - 1][2] * SR)
             if b_ > a_:
-                env[a_:b_] = np.maximum(env[a_:b_], 1.41)
-                env[max(0, a_ - r):a_] = np.maximum(env[max(0, a_ - r):a_], np.linspace(1, 1.41, len(env[max(0, a_ - r):a_])))
-                env[b_:b_ + r] = np.maximum(env[b_:b_ + r], np.linspace(1.41, 1, len(env[b_:b_ + r])))
+                env[a_:b_] = np.maximum(env[a_:b_], 1.26)
+                env[max(0, a_ - r):a_] = np.maximum(env[max(0, a_ - r):a_], np.linspace(1, 1.26, len(env[max(0, a_ - r):a_])))
+                env[b_:b_ + r] = np.maximum(env[b_:b_ + r], np.linspace(1.26, 1, len(env[b_:b_ + r])))
         audio = audio * env
         audio = audio / max(1.0, np.abs(audio).max() / 0.95)
         audio, sh = _compress_silences(audio, chars)

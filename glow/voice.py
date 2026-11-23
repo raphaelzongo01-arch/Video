@@ -98,7 +98,8 @@ EL_SETTINGS = dict(stability=0.45, similarity_boost=0.8, style=0.35, use_speaker
 # ton « reproche / provocation » : modèle v3 + indications de jeu (non prononcées), remises à chaque scène
 EL_MODEL = "eleven_v3"
 EL_V3_SETTINGS = dict(stability=0.5, similarity_boost=0.8)
-EL_TAG = "[firm] [emphatic] [articulating clearly]"
+EL_TAG = "[confident] [motivating]"
+EL_CAPS = False
 EL_TEMPO = 1.15
 
 
